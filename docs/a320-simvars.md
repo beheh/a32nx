@@ -299,6 +299,10 @@
     - Bool
     - True when the FWC decides that flight phase inhibits should be overridden (and ignored)
 
+- A32NX_FWC_AUDIO_ATTENUATION
+    - Bool
+    - True when the FWC decides that it's audio should be attenuated (reduced by 6db)
+
 - A32NX_VSPEEDS_VS
     - Number
     - Current config stall speed

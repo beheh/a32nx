@@ -15,7 +15,10 @@ class A32NX_FWC {
         // ESDL 1. 0. 60
         this.eng1OrTwoRunningConf = new NXLogic_ConfirmNode(30);
 
-        // ESDL 1. 0. 73
+        // ESLD 1. 0. 71
+        this.attenuated = null;
+
+        // ESLD 1. 0. 73
         this.speedAbove80KtsMemo = new NXLogic_MemoryNode(true);
 
         // ESDL 1. 0. 79 / ESDL 1. 0. 80
@@ -65,6 +68,7 @@ class A32NX_FWC {
         this._updateButtons(_deltaTime);
         this._updateTakeoffMemo(_deltaTime);
         this._updateLandingMemo(_deltaTime);
+        this._updateAudioAttenuation(_deltaTime);
     }
 
     _resetPulses() {
@@ -285,5 +289,17 @@ class A32NX_FWC {
 
         this.ldgMemo = showInApproach || invalidRadioMemo || this.flightPhase === 8 || this.flightPhase === 7;
         SimVar.SetSimVarValue("L:A32NX_FWC_LDGMEMO", "Bool", this.ldgMemo);
+    }
+
+    _updateAudioAttenuation(_deltaTime) {
+        const eng1NotRunning = SimVar.GetSimVarValue("ENG N1 RPM:1", "Percent") < 15;
+        const eng2NotRunning = SimVar.GetSimVarValue("ENG N1 RPM:2", "Percent") < 15;
+        const ground = Simplane.getIsGrounded();
+
+        const shouldAttenuate = eng1NotRunning && eng2NotRunning && ground;
+        if (shouldAttenuate !== this.attenuated) {
+            SimVar.SetSimVarValue("L:A32NX_FWC_AUDIO_ATTENUATION", "Bool", shouldAttenuate);
+            this.attenuated = shouldAttenuate;
+        }
     }
 }
