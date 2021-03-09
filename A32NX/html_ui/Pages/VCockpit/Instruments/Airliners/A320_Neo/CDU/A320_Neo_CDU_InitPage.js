@@ -222,7 +222,7 @@ class CDUInitPage {
             ["COST INDEX", "TROPO"],
             [costIndex, tropo],
             ["CRZ FL/TEMP", "GND TEMP"],
-            [cruiseFlTemp, "---°[color]inop"],
+            [cruiseFlTemp, "---[color]inop"],
         ]);
 
         mcdu.setArrows(false, false, true, true);
@@ -445,7 +445,7 @@ class CDUInitPage {
         };
 
         if (CDUInitPage.fuelPredConditionsMet(mcdu)) {
-            initBTitle = "INIT FUEL PREDICTION{sp}";
+            initBTitle = "INIT FUEL PRED{sp}";
             fuelPlanTopTitle = "";
             fuelPlanBottomTitle = "";
 
