@@ -292,6 +292,52 @@
     - Bool
     - True when the FWC decides that flight phase inhibits should be overridden (and ignored)
 
+_ A32NX_FWS_FLIGHT_PHASE
+    - Enum
+    - Contains the numeric flight phase as determined by the Flight Warning System
+
+- A32NX_FWS_MASTER_WARN
+  - Bool
+  - True when the FWS decides to show the MASTER WARN light
+
+- A32NX_FWS_MASTER_CAUT
+  - Bool
+  - True when the FWS decides to show the MASTER CAUT light
+  
+- A32NX_FWS_SOUND
+  - Bool
+  - True when the FWS decides to show the MASTER CAUT light
+
+- A32NX_FWS_EWD_WARNING
+    - Bool
+    - Indicates whether the EWD should show a warning, suppressing advisories 
+
+- A32NX_FWS_EWD_STATUS_REMINDER
+    - Enum
+    - Indicates whether the STS field on the EWD should be hidden, visible or flashing
+
+- A32NX_FWS_EWD_OVERFLOW_SYMBOL
+    - Bool
+    - True when the FWS decides to show the overflow arrow on the EWD
+
+- A32NX_FWS_EWD_LEFT_LINE_{1,7}  
+  A32NX_FWS_EWD_RIGHT_LINE_{1,7}
+    - Enum
+    - Indicates which specific message should be shown on the named line of the EWD
+
+- A32NX_FWS_SD_STATUS_LEFT_LINE_{1,18}  
+  A32NX_FWS_SD_STATUS_RIGHT_LINE_{1,18}
+    - Enum
+    - Indicates which specific message should be shown on the named line of the status page on the system display
+
+- A32NX_FWS_SELECT_PAGE
+    - Enum
+    - Indicates the specific system page that should be called up on the system display
+
+- A32NX_FWS_SD_STATUS_OVERFLOW_SYMBOL
+    - Bool
+    - True when the FWS decides to show the overflow arrow on the Status page on the system display
+
 - A32NX_VSPEEDS_VS
     - Number
     - Current config stall speed

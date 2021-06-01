@@ -14,6 +14,6 @@ pub mod hydraulic;
 pub mod landing_gear;
 pub mod overhead;
 pub mod pneumatic;
-pub mod fwc;
+pub mod flight_warning;
 pub mod shared;
 pub mod simulation;

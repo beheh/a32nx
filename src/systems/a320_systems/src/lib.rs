@@ -1,5 +1,6 @@
 mod electrical;
 mod fuel;
+mod fwc;
 mod hydraulic;
 mod pneumatic;
 mod power_consumption;

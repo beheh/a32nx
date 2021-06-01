@@ -1,0 +1,17 @@
+<script type="text/html" id="A32NX_PAGE_NAME_TEMPLATE">
+    <script id="A32NX_WIDGET_NAME_BUNDLED_LOGIC">
+        // Although this is a script tag, because it is a child of a custom element,
+        // it will not execute. Inside `template.js`, we read the contents of this script
+        // element, then create a new script element and append it to the document body.
+        // We embed it into this file, even though it is useless, because this file can
+        // be hot-reloaded, but `template.js` cannot.
+        /* eslint-disable */
+        WIDGET_BUNDLE
+</script>
+<style id="A32NX_WIDGET_NAME_BUNDLED_STYLE">
+    /* same deal as above */
+    WIDGET_STYLE
+</style>
+</script>
+
+<script type="text/html" import-script="/Pages/VCockpit/Instruments/generated/widgets/WIDGET_NAME_SKEWER/template.js"></script>
