@@ -1,4 +1,5 @@
-mod logic;
+pub mod logic;
+pub mod parameters;
 
 pub trait FwcReaderWriter {
     fn read(&mut self, name: &str) -> f64;
@@ -11,9 +12,7 @@ pub struct FwcWriter<'a> {
 
 impl<'a> FwcWriter<'a> {
     pub fn new(fwc_read_writer: &'a mut dyn FwcReaderWriter) -> Self {
-        Self {
-            fwc_read_writer,
-        }
+        Self { fwc_read_writer }
     }
 
     pub fn write_f64(&mut self, name: &str, value: f64) {

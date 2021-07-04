@@ -1,11 +1,11 @@
 use crate::simulation::UpdateContext;
 use std::time::Duration;
 
-/// A "confirmation" circuit, which only passes a signal once it has been stable for a certain
-/// amount of time. It is inspired by the CONF nodes as used by the FWC. When it detects either a
-/// rising or falling edge (depending on it's type) it will wait for up to time t and emit the
-/// incoming signal if it was stable throughout t. If at any point the signal reverts during t the
-/// state is fully reset, and the original signal will be emitted again.
+/// A confirmation circuit, which only passes a signal once it has been stable for a certain amount
+/// of time. It is inspired by the CONF nodes as used by the FWC. When it detects either a rising or
+/// falling edge (depending on it's type) it will wait for up to time t and emit the  incoming
+/// signal if it was stable throughout t. If at any point the signal reverts during t the state is
+/// fully reset, and the original signal will be emitted again.
 pub struct ConfirmationNode {
     leading_edge: bool,
     time_delay: Duration,
@@ -31,7 +31,7 @@ impl ConfirmationNode {
         Self::new(false, time_delay)
     }
 
-    pub fn update(&mut self, context: &UpdateContext, hi: bool) {
+    pub fn update(&mut self, context: &UpdateContext, hi: bool) -> bool {
         let condition_met = hi == self.leading_edge;
         if condition_met {
             self.condition_since += context.delta();
@@ -40,10 +40,7 @@ impl ConfirmationNode {
             self.condition_since = Duration::from_secs(0);
             self.output = false;
         }
-    }
-
-    pub fn get(&self) -> bool {
-        self.output
+        return self.output;
     }
 }
 
@@ -83,7 +80,7 @@ impl MonostableTriggerNode {
         }
     }
 
-    pub fn update(&mut self, context: &UpdateContext, hi: bool) {
+    pub fn update(&mut self, context: &UpdateContext, hi: bool) -> bool {
         self.remaining_trigger = match self.remaining_trigger.checked_sub(context.delta()) {
             Some(res) => res,
             None => Duration::from_secs(0),
@@ -96,24 +93,22 @@ impl MonostableTriggerNode {
         }
         self.last_hi = hi;
         self.output = self.remaining_trigger > Duration::from_secs(0);
-    }
-
-    pub fn get(&self) -> bool {
-        self.output
+        return self.output;
     }
 }
 
 /// A flip-flop or memory circuit that can be used to store a single bit. It has two inputs: Set and
 /// Reset. At first it will always emit a falsy value, until it receives a signal on the set input,
 /// at which point it will start emitting a truthy value. This will continue until a signal is
-/// received on the reset input, at which point it reverts to the original falsy output. It a signal
-/// is sent on both set and reset at the same time, the input with a star will have precedence. The
-/// NVM flag is not implemented right now but can be used to indicate non-volatile memory storage,
-/// which means the value will persist even when electrical power is lost and subsequently restored.
+/// received on the reset input, at which point it reverts to the original falsy output. If a signal
+/// is received on both set and reset at the same time, the input with a star will have precedence.
+/// The NVM flag is not implemented right now but can be used to indicate non-volatile memory
+/// storage,  which means the value will persist even when electrical power is lost and subsequently
+/// restored.
 pub struct MemoryNode {
     has_set_precedence: bool,
     nvm: bool,
-    output: bool,
+    pub output: bool,
 }
 
 impl MemoryNode {
@@ -133,7 +128,7 @@ impl MemoryNode {
         }
     }
 
-    pub fn update(&mut self, context: &UpdateContext, set: bool, reset: bool) {
+    pub fn update(&mut self, _context: &UpdateContext, set: bool, reset: bool) -> bool {
         self.output = if set && reset {
             self.has_set_precedence
         } else if set {
@@ -143,13 +138,15 @@ impl MemoryNode {
         } else {
             self.output
         };
-    }
-
-    pub fn get(&self) -> bool {
-        self.output
+        return self.output;
     }
 }
 
+/// A hysteresis circuit, which will switch between a high and a low state based on two different
+/// numerical comparisons to prevent rapid output switching due to minor value fluctuations.
+/// The circuit will output lo until the up condition is met (value >= up). Then, even if the
+/// condition subsequently fails, the circuit will continue outputting hi until the down condition
+/// is met (value <= dn).
 pub struct HysteresisNode<T> {
     up: T,
     dn: T,
@@ -168,16 +165,62 @@ where
         }
     }
 
-    pub fn update(&mut self, context: &UpdateContext, value: T) {
+    pub fn update(&mut self, _context: &UpdateContext, value: T) -> bool {
         if self.output {
             self.output = if value <= self.dn { false } else { self.output }
         } else {
             self.output = if value >= self.up { true } else { self.output }
         }
+        return self.output;
+    }
+}
+
+/// A node that memorizes the value from the preceding call.
+pub struct PreceedingValueNode {
+    predecessor: bool,
+}
+
+impl PreceedingValueNode {
+    pub fn new() -> Self {
+        Self { predecessor: false }
     }
 
     pub fn get(&self) -> bool {
-        self.output
+        self.predecessor
+    }
+
+    pub fn update(&mut self, _context: &UpdateContext, value: bool) {
+        self.predecessor = value;
+    }
+}
+
+/// A circuit that emits a specific signal when the input changes from hi to lo or from lo to hi.
+/// The output can be chosen to be hi or lo, so that either:
+/// 1) the stable output signal is lo, and during a change the output change signal is hi
+/// 2) the stable output signal is hi, and during a change the output change signal is lo
+pub struct TransientDetectionNode {
+    change_signal: bool,
+    predecessor: bool,
+}
+
+impl TransientDetectionNode {
+    pub fn new(change_signal: bool) -> Self {
+        Self {
+            change_signal: change_signal,
+            predecessor: false,
+        }
+    }
+
+    pub fn update(&mut self, _context: &UpdateContext, value: bool) -> bool {
+        let predecessor = self.predecessor;
+        self.predecessor = value;
+        return if value != predecessor {
+            // A change has occurred
+            self.change_signal
+        } else {
+            // No change has occurred
+            !self.change_signal
+        };
     }
 }
 
@@ -198,22 +241,22 @@ mod tests {
         #[test]
         fn when_condition_fails_stays_lo() {
             let mut node = ConfirmationNode::new_leading(Duration::from_secs(1));
-            node.update(&context(Duration::from_secs(1)), false);
-            assert_eq!(node.get(), false);
+            assert_eq!(node.update(&context(Duration::from_secs(1)), false), false);
         }
 
         #[test]
         fn when_condition_passes_first_then_output_lo() {
             let mut node = ConfirmationNode::new_leading(Duration::from_secs(1));
-            node.update(&context(Duration::from_secs_f64(0.1)), true);
-            assert_eq!(node.get(), false);
+            assert_eq!(
+                node.update(&context(Duration::from_secs_f64(0.1)), true),
+                false
+            );
         }
 
         #[test]
         fn when_condition_passes_long_enough_then_output_hi() {
             let mut node = ConfirmationNode::new_leading(Duration::from_secs(1));
-            node.update(&context(Duration::from_secs(1)), true);
-            assert_eq!(node.get(), true);
+            assert_eq!(node.update(&context(Duration::from_secs(1)), true), true);
         }
 
         #[test]
@@ -221,8 +264,10 @@ mod tests {
             let mut node = ConfirmationNode::new_leading(Duration::from_secs(1));
             node.update(&context(Duration::from_secs(1)), true);
             node.update(&context(Duration::from_secs_f64(0.1)), false);
-            node.update(&context(Duration::from_secs_f64(0.1)), true);
-            assert_eq!(node.get(), false);
+            assert_eq!(
+                node.update(&context(Duration::from_secs_f64(0.1)), true),
+                false
+            );
         }
     }
 
@@ -233,23 +278,20 @@ mod tests {
         #[test]
         fn when_created_outputs_lo() {
             let mut node = MonostableTriggerNode::new(true, Duration::from_secs(1));
-            node.update(&context(Duration::from_secs(1)), false);
-            assert_eq!(node.get(), false);
+            assert_eq!(node.update(&context(Duration::from_secs(1)), false), false);
         }
 
         #[test]
         fn when_triggered_outputs_hi() {
             let mut node = MonostableTriggerNode::new(true, Duration::from_secs(1));
-            node.update(&context(Duration::from_secs(1)), true);
-            assert_eq!(node.get(), true);
+            assert_eq!(node.update(&context(Duration::from_secs(1)), true), true);
         }
 
         #[test]
         fn when_triggered_and_elapses_outputs_lo() {
             let mut node = MonostableTriggerNode::new(true, Duration::from_secs(1));
             node.update(&context(Duration::from_secs(1)), true);
-            node.update(&context(Duration::from_secs(1)), false);
-            assert_eq!(node.get(), false);
+            assert_eq!(node.update(&context(Duration::from_secs(1)), false), false);
         }
 
         #[test]
@@ -258,8 +300,10 @@ mod tests {
             node.update(&context(Duration::from_secs(1)), true);
             node.update(&context(Duration::from_secs_f64(0.5)), false);
             node.update(&context(Duration::from_secs_f64(0.4)), true);
-            node.update(&context(Duration::from_secs_f64(0.1)), false);
-            assert_eq!(node.get(), false);
+            assert_eq!(
+                node.update(&context(Duration::from_secs_f64(0.1)), false),
+                false
+            );
         }
 
         #[test]
@@ -268,8 +312,10 @@ mod tests {
             node.update(&context(Duration::from_secs(1)), true);
             node.update(&context(Duration::from_secs_f64(0.5)), false);
             node.update(&context(Duration::from_secs_f64(0.4)), true);
-            node.update(&context(Duration::from_secs_f64(0.1)), false);
-            assert_eq!(node.get(), true);
+            assert_eq!(
+                node.update(&context(Duration::from_secs_f64(0.1)), false),
+                true
+            );
         }
     }
 
@@ -280,48 +326,63 @@ mod tests {
         #[test]
         fn when_created_outputs_lo() {
             let mut node = MemoryNode::new(true);
-            node.update(&context(Duration::from_secs(1)), false, false);
-            assert_eq!(node.get(), false);
+            assert_eq!(
+                node.update(&context(Duration::from_secs(1)), false, false),
+                false
+            );
         }
 
         #[test]
         fn when_set_outputs_lo() {
             let mut node = MemoryNode::new(true);
-            node.update(&context(Duration::from_secs(1)), true, false);
-            assert_eq!(node.get(), true);
+            assert_eq!(
+                node.update(&context(Duration::from_secs(1)), true, false),
+                true
+            );
         }
 
         #[test]
         fn when_set_keeps_lo() {
             let mut node = MemoryNode::new(true);
             node.update(&context(Duration::from_secs(1)), true, false);
-            node.update(&context(Duration::from_secs(1)), false, false);
-            assert_eq!(node.get(), true);
+
+            assert_eq!(
+                node.update(&context(Duration::from_secs(1)), false, false),
+                true
+            );
         }
 
         #[test]
         fn when_reset_outputs_lo() {
             let mut node = MemoryNode::new(true);
-            node.update(&context(Duration::from_secs(1)), false, true);
-            assert_eq!(node.get(), false);
+            assert_eq!(
+                node.update(&context(Duration::from_secs(1)), false, true),
+                false
+            );
 
             node.update(&context(Duration::from_secs(1)), true, false);
-            node.update(&context(Duration::from_secs(1)), false, true);
-            assert_eq!(node.get(), false);
+            assert_eq!(
+                node.update(&context(Duration::from_secs(1)), false, true),
+                false
+            );
         }
 
         #[test]
         fn when_set_precedence_and_both_hi_outputs_hi() {
             let mut node = MemoryNode::new(true);
-            node.update(&context(Duration::from_secs(1)), true, true);
-            assert_eq!(node.get(), true);
+            assert_eq!(
+                node.update(&context(Duration::from_secs(1)), true, true),
+                true
+            );
         }
 
         #[test]
         fn when_no_set_precedence_and_both_hi_outputs_lo() {
             let mut node = MemoryNode::new(false);
-            node.update(&context(Duration::from_secs(1)), true, true);
-            assert_eq!(node.get(), false);
+            assert_eq!(
+                node.update(&context(Duration::from_secs(1)), true, true),
+                false
+            );
         }
     }
 
@@ -333,16 +394,20 @@ mod tests {
         fn when_stays_below_up_stays_lo() {
             let mut node =
                 HysteresisNode::new(Length::new::<foot>(-10.0), Length::new::<foot>(10.0));
-            node.update(&context(Duration::from_secs(1)), Length::new::<foot>(9.9));
-            assert_eq!(node.get(), false);
+            assert_eq!(
+                node.update(&context(Duration::from_secs(1)), Length::new::<foot>(9.9)),
+                false
+            );
         }
 
         #[test]
         fn when_above_up_becomes_hi() {
             let mut node =
                 HysteresisNode::new(Length::new::<foot>(-10.0), Length::new::<foot>(10.0));
-            node.update(&context(Duration::from_secs(1)), Length::new::<foot>(10.0));
-            assert_eq!(node.get(), true);
+            assert_eq!(
+                node.update(&context(Duration::from_secs(1)), Length::new::<foot>(10.0)),
+                true
+            );
         }
 
         #[test]
@@ -350,8 +415,10 @@ mod tests {
             let mut node =
                 HysteresisNode::new(Length::new::<foot>(-10.0), Length::new::<foot>(10.0));
             node.update(&context(Duration::from_secs(1)), Length::new::<foot>(10.0));
-            node.update(&context(Duration::from_secs(1)), Length::new::<foot>(9.9));
-            assert_eq!(node.get(), true);
+            assert_eq!(
+                node.update(&context(Duration::from_secs(1)), Length::new::<foot>(9.9)),
+                true
+            );
         }
 
         #[test]
@@ -359,8 +426,62 @@ mod tests {
             let mut node =
                 HysteresisNode::new(Length::new::<foot>(-10.0), Length::new::<foot>(10.0));
             node.update(&context(Duration::from_secs(1)), Length::new::<foot>(10.0));
-            node.update(&context(Duration::from_secs(1)), Length::new::<foot>(-10.0));
+            assert_eq!(
+                node.update(&context(Duration::from_secs(1)), Length::new::<foot>(-10.0)),
+                false
+            );
+        }
+    }
+
+    #[cfg(test)]
+    mod preceeding_value_node_tests {
+        use super::*;
+
+        #[test]
+        fn when_lo_then_lo() {
+            let mut node = PreceedingValueNode::new();
+            node.update(&context(Duration::from_secs(1)), false);
             assert_eq!(node.get(), false);
+        }
+
+        #[test]
+        fn when_hi_then_hi() {
+            let mut node = PreceedingValueNode::new();
+            node.update(&context(Duration::from_secs(1)), true);
+            assert_eq!(node.get(), true);
+        }
+    }
+
+    #[cfg(test)]
+    mod transient_detection_node_tests {
+        use super::*;
+
+        #[test]
+        fn when_lo_then_lo_emits_lo() {
+            let mut node = TransientDetectionNode::new(true);
+            node.update(&context(Duration::from_secs(1)), false);
+            assert_eq!(node.update(&context(Duration::from_secs(1)), false), false);
+        }
+
+        #[test]
+        fn when_lo_then_hi_emits_hi() {
+            let mut node = TransientDetectionNode::new(true);
+            node.update(&context(Duration::from_secs(1)), false);
+            assert_eq!(node.update(&context(Duration::from_secs(1)), true), true);
+        }
+
+        #[test]
+        fn when_hi_then_hi_emits_lo() {
+            let mut node = TransientDetectionNode::new(true);
+            node.update(&context(Duration::from_secs(1)), true);
+            assert_eq!(node.update(&context(Duration::from_secs(1)), true), false);
+        }
+
+        #[test]
+        fn when_hi_then_lo_emits_hi() {
+            let mut node = TransientDetectionNode::new(true);
+            node.update(&context(Duration::from_secs(1)), true);
+            assert_eq!(node.update(&context(Duration::from_secs(1)), false), true);
         }
     }
 

@@ -1,6 +1,6 @@
 mod electrical;
 mod fuel;
-mod fwc;
+mod flight_warning;
 mod hydraulic;
 mod pneumatic;
 mod power_consumption;

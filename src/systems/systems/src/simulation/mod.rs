@@ -233,11 +233,11 @@ impl<'a, T: Aircraft, U: SimulatorReaderWriter> Simulation<'a, T, U> {
         electric_power.consume_in(self.aircraft);
         electric_power.report_consumption_to(self.aircraft);
 
-        let mut fwc_writer = FwcWriter::new();
-        let mut visitor = SimulationToFwcVisitor::new(&mut fwc_writer);
-        self.aircraft.accept(&mut visitor);
+        //let mut fwc_writer = FwcWriter::new();
+        //let mut visitor = SimulationToFwcVisitor::new(&mut fwc_writer);
+        //self.aircraft.accept(&mut visitor);
 
-        self.aircraft.update_fwc(fwc_writer);
+        //self.aircraft.update_fwc(fwc_writer);
 
         let mut writer = SimulatorWriter::new(self.simulator_read_writer);
         let mut visitor = SimulationToSimulatorVisitor::new(&mut writer);
@@ -387,7 +387,6 @@ pub(crate) fn from_bool(value: bool) -> f64 {
     }
 }
 
-
 pub trait FwcReaderWriter {
     fn read(&mut self, name: &str) -> f64;
     fn write(&mut self, name: &str, value: f64);
@@ -399,9 +398,7 @@ pub struct FwcWriter<'a> {
 
 impl<'a> FwcWriter<'a> {
     pub fn new(fwc_read_writer: &'a mut dyn FwcReaderWriter) -> Self {
-        Self {
-            fwc_read_writer,
-        }
+        Self { fwc_read_writer }
     }
 
     pub fn write_f64(&mut self, name: &str, value: f64) {
