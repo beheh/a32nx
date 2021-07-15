@@ -1,3 +1,5 @@
+use crate::flight_warning::parameters::SignStatusMatrix;
+
 pub mod logic;
 pub mod parameters;
 
@@ -18,4 +20,8 @@ impl<'a> FwcWriter<'a> {
     pub fn write_f64(&mut self, name: &str, value: f64) {
         self.fwc_read_writer.write(name, value);
     }
+}
+
+pub fn is_inv(parameter: &impl SignStatusMatrix) -> bool {
+    parameter.is_fw()
 }

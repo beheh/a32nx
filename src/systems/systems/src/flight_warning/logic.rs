@@ -80,6 +80,14 @@ impl MonostableTriggerNode {
         }
     }
 
+    pub fn new_leading(time_delay: Duration) -> Self {
+        Self::new(true, time_delay)
+    }
+
+    pub fn new_falling(time_delay: Duration) -> Self {
+        Self::new(true, time_delay)
+    }
+
     pub fn update(&mut self, context: &UpdateContext, hi: bool) -> bool {
         self.remaining_trigger = match self.remaining_trigger.checked_sub(context.delta()) {
             Some(res) => res,
@@ -93,7 +101,47 @@ impl MonostableTriggerNode {
         }
         self.last_hi = hi;
         self.output = self.remaining_trigger > Duration::from_secs(0);
-        return self.output;
+        self.output
+    }
+}
+
+/// A node that detects a rising or a falling edge and will trigger exactly once. Similar to a
+/// monostable trigger node, except that the signal will immediately return, and T approaches 0.
+pub struct PulseNode {
+    leading_edge: bool,
+    last_hi: bool,
+    output: bool,
+}
+
+impl PulseNode {
+    pub fn new(leading_edge: bool) -> Self {
+        Self {
+            leading_edge,
+            output: false,
+            last_hi: false,
+        }
+    }
+
+    pub fn new_leading() -> Self {
+        Self::new(true)
+    }
+
+    pub fn new_falling() -> Self {
+        Self::new(true)
+    }
+
+    pub fn update(&mut self, _context: &UpdateContext, hi: bool) -> bool {
+        if self.output {
+            self.output = false
+        } else {
+            if self.leading_edge {
+                self.output = !self.last_hi && hi;
+            } else {
+                self.output = self.last_hi && !hi;
+            }
+        }
+        self.last_hi = hi;
+        self.output
     }
 }
 
@@ -272,7 +320,7 @@ mod tests {
     }
 
     #[cfg(test)]
-    mod monostable_trigges_node_tests {
+    mod monostable_trigger_node_tests {
         use super::*;
 
         #[test]
@@ -316,6 +364,37 @@ mod tests {
                 node.update(&context(Duration::from_secs_f64(0.1)), false),
                 true
             );
+        }
+    }
+
+    #[cfg(test)]
+    mod pulse_node_tests {
+        use super::*;
+
+        #[test]
+        fn when_created_outputs_lo() {
+            let mut node = PulseNode::new_leading();
+            assert_eq!(node.update(&context(Duration::from_secs(1)), false), false);
+        }
+
+        #[test]
+        fn when_triggered_outputs_hi() {
+            let mut node = PulseNode::new_leading();
+            assert_eq!(node.update(&context(Duration::from_secs(1)), true), true);
+        }
+
+        #[test]
+        fn when_triggered_returns_to_lo() {
+            let mut node = PulseNode::new_leading();
+            node.update(&context(Duration::from_secs(1)), true);
+            assert_eq!(node.update(&context(Duration::from_secs(1)), false), false);
+        }
+
+        #[test]
+        fn when_remains_returns_to_lo() {
+            let mut node = PulseNode::new_leading();
+            node.update(&context(Duration::from_secs(1)), true);
+            assert_eq!(node.update(&context(Duration::from_secs(1)), true), false);
         }
     }
 
