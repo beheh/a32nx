@@ -1,3 +1,4 @@
+use uom::si::angle::degree;
 use uom::si::f64::*;
 use uom::si::length::foot;
 use uom::si::velocity::knot;
@@ -48,6 +49,30 @@ pub(super) trait ToConfigTest {
     fn to_config_test(&self) -> &Arinc429Parameter<bool>;
 }
 
+pub(super) trait Eng1Tla {
+    fn eng1_tla(&self, index: usize) -> &Arinc429Parameter<Angle>;
+}
+
+pub(super) trait Eng2Tla {
+    fn eng2_tla(&self, index: usize) -> &Arinc429Parameter<Angle>;
+}
+
+pub(super) trait Eng1AutoToga {
+    fn eng_1_auto_toga(&self, index: usize) -> &Arinc429Parameter<bool>;
+}
+
+pub(super) trait Eng1LimitModeSoftGa {
+    fn eng_1_limit_mode_soft_ga(&self, index: usize) -> &Arinc429Parameter<bool>;
+}
+
+pub(super) trait Eng2AutoToga {
+    fn eng_2_auto_toga(&self, index: usize) -> &Arinc429Parameter<bool>;
+}
+
+pub(super) trait Eng2LimitModeSoftGa {
+    fn eng_2_limit_mode_soft_ga(&self, index: usize) -> &Arinc429Parameter<bool>;
+}
+
 pub(super) struct A320SignalTable {
     lh_lg_compressed_1: Arinc429Parameter<bool>,
     lh_lg_compressed_2: Arinc429Parameter<bool>,
@@ -66,6 +91,10 @@ pub(super) struct A320SignalTable {
     eng2_core_speed_at_or_above_idle_b: Arinc429Parameter<bool>,
     eng_1_fire_pb_out: DiscreteParameter,
     to_config_test: Arinc429Parameter<bool>,
+    eng1_tla_a: Arinc429Parameter<Angle>,
+    eng1_tla_b: Arinc429Parameter<Angle>,
+    eng2_tla_a: Arinc429Parameter<Angle>,
+    eng2_tla_b: Arinc429Parameter<Angle>,
 }
 impl A320SignalTable {
     pub fn new() -> Self {
@@ -87,6 +116,10 @@ impl A320SignalTable {
             eng2_core_speed_at_or_above_idle_b: Arinc429Parameter::new_inv(false),
             eng_1_fire_pb_out: DiscreteParameter::new_inv(false),
             to_config_test: Arinc429Parameter::new_inv(false),
+            eng1_tla_a: Arinc429Parameter::new_inv(Angle::new::<degree>(0.0)),
+            eng1_tla_b: Arinc429Parameter::new_inv(Angle::new::<degree>(0.0)),
+            eng2_tla_a: Arinc429Parameter::new_inv(Angle::new::<degree>(0.0)),
+            eng2_tla_b: Arinc429Parameter::new_inv(Angle::new::<degree>(0.0)),
         }
     }
 
@@ -169,6 +202,22 @@ impl A320SignalTable {
     ) {
         self.eng2_core_speed_at_or_above_idle_b = at_or_above_idle;
     }
+
+    pub(super) fn set_eng1_tla_a(&mut self, tla: Arinc429Parameter<Angle>) {
+        self.eng1_tla_a = tla
+    }
+
+    pub(super) fn set_eng1_tla_b(&mut self, tla: Arinc429Parameter<Angle>) {
+        self.eng1_tla_b = tla
+    }
+
+    pub(super) fn set_eng2_tla_a(&mut self, tla: Arinc429Parameter<Angle>) {
+        self.eng2_tla_a = tla
+    }
+
+    pub(super) fn set_eng2_tla_b(&mut self, tla: Arinc429Parameter<Angle>) {
+        self.eng2_tla_b = tla
+    }
 }
 impl LhLgCompressed for A320SignalTable {
     fn lh_lg_compressed(&self, index: usize) -> &Arinc429Parameter<bool> {
@@ -213,11 +262,13 @@ impl Eng1MasterLeverSelectOn for A320SignalTable {
         &self.eng1_master_lever_select_on
     }
 }
+
 impl Eng2MasterLeverSelectOn for A320SignalTable {
     fn eng2_master_lever_select_on(&self) -> &Arinc429Parameter<bool> {
         &self.eng2_master_lever_select_on
     }
 }
+
 impl Eng1CoreSpeedAtOrAboveIdle for A320SignalTable {
     fn eng1_core_speed_at_or_above_idle(&self, index: usize) -> &Arinc429Parameter<bool> {
         match index {
@@ -227,6 +278,7 @@ impl Eng1CoreSpeedAtOrAboveIdle for A320SignalTable {
         }
     }
 }
+
 impl Eng2CoreSpeedAtOrAboveIdle for A320SignalTable {
     fn eng2_core_speed_at_or_above_idle(&self, index: usize) -> &Arinc429Parameter<bool> {
         match index {
@@ -236,13 +288,35 @@ impl Eng2CoreSpeedAtOrAboveIdle for A320SignalTable {
         }
     }
 }
+
 impl Eng1FirePbOut for A320SignalTable {
     fn eng_1_fire_pb_out(&self) -> &DiscreteParameter {
         &self.eng_1_fire_pb_out
     }
 }
+
 impl ToConfigTest for A320SignalTable {
     fn to_config_test(&self) -> &Arinc429Parameter<bool> {
         &self.to_config_test
+    }
+}
+
+impl Eng1Tla for A320SignalTable {
+    fn eng1_tla(&self, index: usize) -> &Arinc429Parameter<Angle> {
+        match index {
+            1 => &self.eng1_tla_a,
+            2 => &self.eng1_tla_b,
+            _ => panic!(),
+        }
+    }
+}
+
+impl Eng2Tla for A320SignalTable {
+    fn eng2_tla(&self, index: usize) -> &Arinc429Parameter<Angle> {
+        match index {
+            1 => &self.eng2_tla_a,
+            2 => &self.eng2_tla_b,
+            _ => panic!(),
+        }
     }
 }

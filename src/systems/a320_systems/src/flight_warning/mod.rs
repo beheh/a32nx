@@ -6,13 +6,13 @@ mod signals;
 mod warnings;
 
 pub(super) struct A320FlightWarningComputer {
-    new_ground_def: NewGroundDef,
-    ground_detection: GroundDetection,
-    speed_detection: SpeedDetection,
+    new_ground_def: NewGroundActivation,
+    ground_detection: GroundDetectionActivation,
+    speed_detection: SpeedDetectionActivation,
     engines_not_running: EnginesNotRunning,
-    both_engine_running: BothEngineRunning,
-    altitude_def: MyAltitudeDef,
-    cfm_flight_phases: CfmFlightPhases,
+    both_engine_running: EngRunningActivation,
+    altitude_def: AltitudeDefActivation,
+    cfm_flight_phases: CfmFlightPhasesDefActivation,
     flight_phases_ground: FlightPhasesGround,
     flight_phases_air: FlightPhasesAir,
 }
@@ -20,13 +20,13 @@ pub(super) struct A320FlightWarningComputer {
 impl A320FlightWarningComputer {
     pub fn new() -> Self {
         Self {
-            new_ground_def: NewGroundDef::new(),
-            ground_detection: GroundDetection::new(),
-            speed_detection: SpeedDetection::new(),
+            new_ground_def: NewGroundActivation::new(),
+            ground_detection: GroundDetectionActivation::new(),
+            speed_detection: SpeedDetectionActivation::new(),
             engines_not_running: EnginesNotRunning::new(),
-            both_engine_running: BothEngineRunning::new(),
-            altitude_def: MyAltitudeDef::new(),
-            cfm_flight_phases: CfmFlightPhases::new(),
+            both_engine_running: EngRunningActivation::new(),
+            altitude_def: AltitudeDefActivation::new(),
+            cfm_flight_phases: CfmFlightPhasesDefActivation::new(),
             flight_phases_ground: FlightPhasesGround::new(),
             flight_phases_air: FlightPhasesAir::new(),
         }
